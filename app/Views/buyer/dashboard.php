@@ -1,6 +1,6 @@
 <?php
 // Buyer dashboard (marketplace style)
-$user = $user ?? 'session'()->get('user') ?? [];
+$user = $user ?? session()->get('user') ?? [];
 ?>
 
 <!DOCTYPE html>
@@ -31,7 +31,7 @@ $user = $user ?? 'session'()->get('user') ?? [];
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-  <link href="<?= 'base_url'('assets/app.css') ?>" rel="stylesheet">
+  <link href="<?= base_url('assets/app.css') ?>" rel="stylesheet">
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
@@ -47,15 +47,15 @@ include __DIR__ . '/../partials/header.php';
 <div class="container my-4">
 
   <!-- Flash messages -->
-  <?php if ('session'()->getFlashdata('success')): ?>
+  <?php if (session()->getFlashdata('success')): ?>
     <div class="alert alert-success">
-      <?= 'session'()->getFlashdata('success') ?>
+      <?= session()->getFlashdata('success') ?>
     </div>
   <?php endif; ?>
 
-  <?php if ('session'()->getFlashdata('error')): ?>
+  <?php if (session()->getFlashdata('error')): ?>
     <div class="alert alert-danger">
-      <?= 'session'()->getFlashdata('error') ?>
+      <?= session()->getFlashdata('error') ?>
     </div>
   <?php endif; ?>
 
@@ -75,7 +75,7 @@ include __DIR__ . '/../partials/header.php';
                  name="search"
                  class="form-control"
                  placeholder="Search by title or description"
-                 value="<?= 'esc'($search ?? '') ?>">
+                 value="<?= esc($search ?? '') ?>">
         </div>
 
         <div class="col-md-3">
@@ -83,7 +83,7 @@ include __DIR__ . '/../partials/header.php';
                  name="location"
                  class="form-control"
                  placeholder="Search by location"
-                 value="<?= 'esc'($location ?? '') ?>">
+                 value="<?= esc($location ?? '') ?>">
         </div>
 
         <div class="col-md-3">
@@ -124,7 +124,7 @@ include __DIR__ . '/../partials/header.php';
             Search
           </button>
 
-          <a href="<?= 'base_url'('/buyer/dashboard') ?>"
+          <a href="<?= base_url('/buyer/dashboard') ?>"
              class="btn btn-outline-secondary w-100">
             Reset
           </a>
@@ -145,31 +145,30 @@ include __DIR__ . '/../partials/header.php';
               $existingOffer = $existingOffers[$propertyId] ?? null;
               $chatExist = $chatsExist[$propertyId] ?? false;
               $isFavorite = $favorites[$propertyId] ?? false;
+              // Fix image path for existing properties
+              $imagePath = !empty($property['image_path']) && file_exists(FCPATH . $property['image_path']) 
+                  ? base_url($property['image_path']) 
+                  : 'https://via.placeholder.com/400x250?text=No+Image';
             ?>
 
-            <div class="col-md-6 mb-4 realtime-property">
+            <div class="col-md-6 mb-4 realtime-property" data-property-id="<?= $propertyId ?>">
 
               <div class="card shadow-sm border-0 rounded-4 h-100">
 
-                <?php 
-                $imagePath = !empty($property['image_path']) && file_exists(FCPATH . $property['image_path']) 
-                    ? base_url($property['image_path']) 
-                    : 'https://via.placeholder.com/400x250?text=No+Image';
-                ?>
                 <img src="<?= $imagePath ?>"
-                    onerror="this.src='https://via.placeholder.com/400x250?text=No+Image'"
                      class="card-img-top"
                      style="height:250px; object-fit:cover;"
+                     onerror="this.src='https://via.placeholder.com/400x250?text=No+Image'"
                      alt="Property Image">
 
                 <div class="card-body">
 
                   <h5 class="card-title text-success fw-bold">
-                    <?= 'esc'($property['title']) ?>
+                    <?= esc($property['title']) ?>
                   </h5>
 
                   <p>
-                    <?= 'esc'($property['description']) ?>
+                    <?= esc($property['description']) ?>
                   </p>
 
                   <p class="fw-bold text-primary">
@@ -178,29 +177,29 @@ include __DIR__ . '/../partials/header.php';
 
                   <p class="mb-1">
                     <b>📍 Location:</b>
-                    <?= 'esc'($property['location']) ?>
+                    <?= esc($property['location']) ?>
                   </p>
 
                   <p>
                     <small>
-                      Seller: <?= 'esc'($property['seller_name']) ?>
+                      Seller: <?= esc($property['seller_name']) ?>
                     </small>
                   </p>
 
-                  <a href="<?= 'base_url'('/message/' . $property['seller_id'] . '/' . $propertyId) ?>"
+                  <a href="<?= base_url('/message/' . $property['seller_id'] . '/' . $propertyId) ?>"
                      class="btn btn-outline-success btn-sm mt-2">
                     💬 Message Seller
                   </a>
 
                   <form method="post"
-                        action="<?= 'base_url'('/buyer/favorites/toggle') ?>"
+                        action="<?= base_url('/buyer/favorites/toggle') ?>"
                         class="d-inline">
 
-                    <?= 'csrf_field'() ?>
+                    <?= csrf_field() ?>
 
                     <input type="hidden"
                            name="property_id"
-                           value="<?= 'esc'($propertyId) ?>">
+                           value="<?= $propertyId ?>">
 
                     <button type="submit"
                             class="btn btn-sm <?= $isFavorite ? 'btn-outline-danger' : 'btn-outline-primary' ?> ms-2">
@@ -240,14 +239,14 @@ include __DIR__ . '/../partials/header.php';
                   <?php else: ?>
 
                     <form method="post"
-                          action="<?= 'base_url'('/make_offer') ?>"
+                          action="<?= base_url('/make_offer') ?>"
                           class="d-flex align-items-center gap-2 mt-2">
 
-                      <?= 'csrf_field'() ?>
+                      <?= csrf_field() ?>
 
                       <input type="hidden"
                              name="property_id"
-                             value="<?= 'esc'($propertyId) ?>">
+                             value="<?= $propertyId ?>">
 
                       <input type="number"
                              step="0.01"
@@ -286,7 +285,6 @@ include __DIR__ . '/../partials/header.php';
                 </div>
 
               </div>
-
             </div>
 
           <?php endforeach; ?>
@@ -318,6 +316,39 @@ const socket = io('http://localhost:3000', {
     reconnection: true
 });
 
+// Helper function to escape HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Helper function to show notifications
+function showNotification(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+    toast.style.cssText = 'z-index: 9999; animation: slideIn 0.3s ease-out;';
+    
+    let bgColor = '#28a745';
+    if (type === 'info') bgColor = '#17a2b8';
+    if (type === 'danger') bgColor = '#dc3545';
+    if (type === 'warning') bgColor = '#ffc107';
+    
+    toast.style.background = bgColor;
+    toast.style.color = 'white';
+    
+    toast.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="bi ${type === 'success' ? 'bi-house-door-fill' : type === 'info' ? 'bi-pencil-square' : 'bi-trash-fill'} me-2"></i>
+            <div>${escapeHtml(message)}</div>
+            <button type="button" class="btn-close btn-close-white ms-3" onclick="this.parentElement.parentElement.remove()"></button>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
 socket.on('connect', () => {
     console.log('✅ Connected to websocket server');
 });
@@ -330,8 +361,9 @@ socket.on('connect_error', (error) => {
     console.error('Connection error:', error);
 });
 
+// 1. LISTEN FOR NEW PROPERTIES
 socket.on('property-added', function(property) {
-    console.log('📦 Realtime property received:', property);
+    console.log('📦 New property received:', property);
     
     const propertyContainer = document.getElementById('property-container');
     
@@ -340,16 +372,12 @@ socket.on('property-added', function(property) {
         return;
     }
     
-    // ✅ FIX: Handle missing images properly
+    // Handle missing image path
     let imagePath = 'https://via.placeholder.com/400x250?text=No+Image';
-    
     if (property.image_path && property.image_path !== 'null' && property.image_path !== 'undefined' && property.image_path !== '') {
-        // Remove leading slash if present to avoid double slashes
-        imagePath = property.image_path.replace(/^\//, '');
-        imagePath = '/' + imagePath;
+        imagePath = '/' + property.image_path.replace(/^\//, '');
     }
     
-    // ✅ FIX: Escape all data to prevent XSS and handle missing values
     const escapedTitle = escapeHtml(property.title || 'Untitled');
     const escapedDescription = escapeHtml(property.description ? property.description.substring(0, 150) : 'No description available');
     const escapedLocation = escapeHtml(property.location || 'Location not specified');
@@ -370,14 +398,14 @@ socket.on('property-added', function(property) {
                 <h5 class="card-title text-success fw-bold">
                     ${escapedTitle}
                 </h5>
-                <p>${escapedDescription}</p>
-                <p class="fw-bold text-primary">
+                <p class="property-description">${escapedDescription}</p>
+                <p class="fw-bold text-primary property-price">
                     ₱${formattedPrice}
                 </p>
-                <p class="mb-1">
+                <p class="mb-1 property-location">
                     <b>📍 Location:</b> ${escapedLocation}
                 </p>
-                <p>
+                <p class="property-seller">
                     <small>Seller: ${escapedSellerName}</small>
                 </p>
                 <a href="/message/${sellerId}/${propertyId}" 
@@ -402,9 +430,7 @@ socket.on('property-added', function(property) {
     `;
     
     propertyContainer.insertAdjacentHTML('afterbegin', propertyHTML);
-    
-    // Show notification
-    showNotification(`New property: ${escapedTitle}`);
+    showNotification(`New property: ${escapedTitle}`, 'success');
     
     // Scroll to show new property
     const newProperty = document.querySelector(`.realtime-property[data-property-id="${propertyId}"]`);
@@ -413,29 +439,102 @@ socket.on('property-added', function(property) {
     }
 });
 
-// Helper function to escape HTML
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// 2. LISTEN FOR PROPERTY UPDATES (FIX FOR YOUR ISSUE!)
+socket.on('property-updated', function(property) {
+    console.log('✏️ Property updated:', property);
+    
+    // Find the property card
+    const propertyCard = document.querySelector(`.realtime-property[data-property-id="${property.id}"]`);
+    
+    if (propertyCard) {
+        // Update title
+        const titleElement = propertyCard.querySelector('.card-title');
+        if (titleElement) titleElement.textContent = property.title;
+        
+        // Update description
+        const descElement = propertyCard.querySelector('.property-description');
+        if (descElement) descElement.textContent = property.description ? property.description.substring(0, 150) : 'No description available';
+        
+        // Update price
+        const priceElement = propertyCard.querySelector('.property-price');
+        if (priceElement) priceElement.textContent = `₱${parseFloat(property.price || 0).toLocaleString()}`;
+        
+        // Update location
+        const locationElement = propertyCard.querySelector('.property-location');
+        if (locationElement) locationElement.innerHTML = `<b>📍 Location:</b> ${escapeHtml(property.location || 'Location not specified')}`;
+        
+        // Update seller name
+        const sellerElement = propertyCard.querySelector('.property-seller');
+        if (sellerElement && property.seller_name) {
+            sellerElement.innerHTML = `<small>Seller: ${escapeHtml(property.seller_name)}</small>`;
+        }
+        
+        // Update image if changed
+        if (property.image_path && property.image_path !== 'null') {
+            const imgElement = propertyCard.querySelector('img');
+            let newImagePath = '/' + property.image_path.replace(/^\//, '');
+            imgElement.src = newImagePath;
+        }
+        
+        // Highlight the updated card
+        propertyCard.style.transition = 'background-color 0.5s';
+        propertyCard.style.backgroundColor = '#fff3cd';
+        setTimeout(() => {
+            propertyCard.style.backgroundColor = '';
+        }, 2000);
+        
+        showNotification(`Property updated: ${property.title}`, 'info');
+    } else {
+        console.log('Property card not found for ID:', property.id);
+    }
+});
 
-// Helper function for notifications
-function showNotification(message) {
-    const toast = document.createElement('div');
-    toast.className = 'alert alert-success position-fixed top-0 end-0 m-3';
-    toast.style.cssText = 'z-index: 9999; animation: slideIn 0.3s ease-out; background: #28a745; color: white;';
-    toast.innerHTML = `
-        <div class="d-flex align-items-center">
-            <i class="bi bi-house-door-fill me-2"></i>
-            <div>${escapeHtml(message)}</div>
-            <button type="button" class="btn-close btn-close-white ms-3" onclick="this.parentElement.parentElement.remove()"></button>
-        </div>
-    `;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
-}
+// 3. LISTEN FOR PROPERTY DELETION
+socket.on('property-deleted', function(data) {
+    console.log('🗑️ Property deleted:', data.id);
+    
+    const propertyCard = document.querySelector(`.realtime-property[data-property-id="${data.id}"]`);
+    if (propertyCard) {
+        propertyCard.style.transition = 'opacity 0.3s';
+        propertyCard.style.opacity = '0';
+        setTimeout(() => {
+            propertyCard.remove();
+        }, 300);
+        showNotification(`Property has been removed`, 'danger');
+    }
+});
+
+// 4. LISTEN FOR PROPERTY ARCHIVED
+socket.on('property-archived', function(data) {
+    console.log('📦 Property archived:', data.id);
+    
+    const propertyCard = document.querySelector(`.realtime-property[data-property-id="${data.id}"]`);
+    if (propertyCard) {
+        propertyCard.style.transition = 'opacity 0.3s';
+        propertyCard.style.opacity = '0';
+        setTimeout(() => {
+            propertyCard.remove();
+        }, 300);
+        showNotification(`Property has been archived`, 'warning');
+    }
+});
+
+// 5. LISTEN FOR PROPERTY UNARCHIVED (restored)
+socket.on('property-unarchived', function(data) {
+    console.log('🔄 Property unarchived:', data.id);
+    showNotification(`Property has been restored`, 'info');
+    // Optionally reload or fetch the property again
+    setTimeout(() => {
+        location.reload();
+    }, 2000);
+});
+
+// Debug: Log all events for troubleshooting
+socket.onAny((event, ...args) => {
+    if (!['property-added', 'property-updated', 'property-deleted', 'property-archived', 'property-unarchived'].includes(event)) {
+        console.log('Other event:', event, args);
+    }
+});
 
 // Add animation style
 if (!document.querySelector('#socket-styles')) {
@@ -458,13 +557,6 @@ if (!document.querySelector('#socket-styles')) {
     `;
     document.head.appendChild(style);
 }
-
-// Debug: Log any unknown events
-socket.onAny((event, ...args) => {
-    if (event !== 'property-added') {
-        console.log('Other event:', event, args);
-    }
-});
 </script>
 
 </body>

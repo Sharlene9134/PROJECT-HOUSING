@@ -133,18 +133,14 @@ class SellerController extends BaseController
         $client = \Config\Services::curlrequest();
 
         try {
-            log_message('debug', 'Attempting WebSocket send for property: ' . $propertyId);
-            
-            $response = $client->post('http://localhost:3000/new-property', [
-                'json' => $propertyData,
-                'timeout' => 5  // Increased timeout
+
+            $client->post('http://localhost:3000/new-property', [
+                'json' => $propertyData
             ]);
-            
-            log_message('debug', 'WebSocket response received successfully');
 
         } catch (\Exception $e) {
-            log_message('error', 'WebSocket Error in addProperty: ' . $e->getMessage());
-            log_message('error', 'Error in file: ' . $e->getFile() . ' line: ' . $e->getLine());
+
+            log_message('error', 'WebSocket Error: ' . $e->getMessage());
         }
 
         session()->setFlashdata('success', 'Property added successfully!');
@@ -183,47 +179,11 @@ class SellerController extends BaseController
                     ->update();
             }
 
-            // ✅ ADD WEBSOCKET NOTIFICATION FOR ACCEPTED OFFER
-            $client = \Config\Services::curlrequest();
-            try {
-                $client->post('http://localhost:3000/update-property', [
-                    'json' => [
-                        'id' => $offer['property_id'],
-                        'offer_id' => $offerId,
-                        'action' => 'offer_accepted',
-                        'status' => 'accepted'
-                    ],
-                    'timeout' => 2
-                ]);
-                log_message('debug', 'WebSocket: Offer acceptance broadcasted');
-            } catch (\Exception $e) {
-                log_message('error', 'WebSocket Error (offer accept): ' . $e->getMessage());
-            }
-
             session()->setFlashdata('success', 'Offer accepted successfully!');
 
         } elseif ($action === 'reject') {
 
             $offerModel->update($offerId, ['status' => 'rejected']);
-
-            $offer = $offerModel->find($offerId);
-
-            // ✅ ADD WEBSOCKET NOTIFICATION FOR REJECTED OFFER
-            $client = \Config\Services::curlrequest();
-            try {
-                $client->post('http://localhost:3000/update-property', [
-                    'json' => [
-                        'id' => $offer['property_id'],
-                        'offer_id' => $offerId,
-                        'action' => 'offer_rejected',
-                        'status' => 'rejected'
-                    ],
-                    'timeout' => 2
-                ]);
-                log_message('debug', 'WebSocket: Offer rejection broadcasted');
-            } catch (\Exception $e) {
-                log_message('error', 'WebSocket Error (offer reject): ' . $e->getMessage());
-            }
 
             session()->setFlashdata('success', 'Offer rejected successfully!');
 
@@ -323,24 +283,6 @@ class SellerController extends BaseController
 
             $propertyModel->update($id, $data);
 
-            // REALTIME DATA
-            $updatedProperty = $propertyModel->find($id);
-            $updatedProperty['seller_name'] = $user['name'];
-
-            // SEND TO WEBSOCKET SERVER
-            $client = \Config\Services::curlrequest();
-
-            try {
-
-                $client->post('http://localhost:3000/update-property', [
-                    'json' => $updatedProperty
-                ]);
-
-            } catch (\Exception $e) {
-
-                log_message('error', 'WebSocket Error: ' . $e->getMessage());
-            }
-
             session()->setFlashdata('success', 'Property updated successfully!');
 
             return redirect()->to('/seller/dashboard');
@@ -374,24 +316,6 @@ class SellerController extends BaseController
 
         $propertyModel->update($propertyId, ['is_archived' => 1]);
 
-        // SEND TO WEBSOCKET SERVER
-        $client = \Config\Services::curlrequest();
-
-        try {
-
-            $client->post('http://localhost:3000/archive-property', [
-                'json' => [
-                    'id' => $propertyId,
-                    'is_archived' => 1,
-                    'seller_id' => $user['id']
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-
-            log_message('error', 'WebSocket Error: ' . $e->getMessage());
-        }
-
         session()->setFlashdata('success', 'Property archived successfully!');
 
         return redirect()->to('/seller/dashboard');
@@ -418,24 +342,6 @@ class SellerController extends BaseController
         }
 
         $propertyModel->update($propertyId, ['is_archived' => 0]);
-
-        // SEND TO WEBSOCKET SERVER
-        $client = \Config\Services::curlrequest();
-
-        try {
-
-            $client->post('http://localhost:3000/unarchive-property', [
-                'json' => [
-                    'id' => $propertyId,
-                    'is_archived' => 0,
-                    'seller_id' => $user['id']
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-
-            log_message('error', 'WebSocket Error: ' . $e->getMessage());
-        }
 
         session()->setFlashdata('success', 'Property restored successfully!');
 
@@ -485,24 +391,8 @@ class SellerController extends BaseController
         // DELETE PROPERTY
         $propertyModel->delete($propertyId);
 
-        // ✅ ADD WEBSOCKET NOTIFICATION FOR DELETE
-        $client = \Config\Services::curlrequest();
-        try {
-            $client->post('http://localhost:3000/delete-property', [
-                'json' => [
-                    'id' => $propertyId,
-                    'seller_id' => $user['id']
-                ],
-                'timeout' => 2
-            ]);
-            log_message('debug', 'WebSocket: Property deletion broadcasted for ID: ' . $propertyId);
-        } catch (\Exception $e) {
-            log_message('error', 'WebSocket Error (delete): ' . $e->getMessage());
-        }
-
         session()->setFlashdata('success', 'Property permanently deleted.');
 
         return redirect()->to('/seller/archived');
     }
-    
 }
