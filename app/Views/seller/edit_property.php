@@ -1,24 +1,35 @@
+<?php
+$active = 'seller_dashboard';
+$property = $property ?? [];
+?>
+
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Edit Property | House System</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="utf-8">
+  <title>Edit Property | House Marketplace</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="<?= base_url('assets/app.css') ?>" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
-<body class="bg-light">
+<body class="app-dark">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-success">
-<div class="container">
-    <span class="navbar-brand fw-bold">🏡 Edit Property</span>
-    <div class="d-flex align-items-center">
-        <a href="<?= base_url('/seller/dashboard') ?>" class="btn btn-outline-light btn-sm me-2">🏠 Dashboard</a>
-        <a href="<?= base_url('/logout') ?>" class="btn btn-outline-light btn-sm">Logout</a>
-    </div>
-</div>
-</nav>
+<?php include __DIR__ . '/../partials/header.php'; ?>
 
 <div class="container my-4">
+  <div class="d-flex align-items-end justify-content-between mb-3">
+    <div>
+      <div class="section-title text-white fs-4 mb-0">
+        <i class="bi bi-pencil-square me-2"></i>Edit Property
+      </div>
+      <div class="text-muted small">Update your listing details and image.</div>
+    </div>
+    <a href="<?= base_url('/seller/dashboard') ?>" class="btn btn-outline-light btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+  </div>
+
 <?php if(session()->getFlashdata('success')): ?>
     <div class="alert alert-success"><?= session()->getFlashdata('success') ?></div>
 <?php endif; ?>

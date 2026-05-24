@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\PropertyModel;
 use App\Models\OfferModel;
 use App\Models\MessageModel;
+use App\Models\FavoriteModel;
 
 class BuyerController extends BaseController
 {
@@ -13,7 +14,12 @@ class BuyerController extends BaseController
         $user = $this->checkRoleOrRedirect('buyer');
         if (!$user) return redirect()->to('/login');
 
-        $buyerId = $user['id'];
+        $buyerId = (int) ($user['id'] ?? 0);
+        if ($buyerId <= 0) {
+            return redirect()->to('/login');
+        }
+
+
 
         // 2️⃣ Get search & filter inputs and sanitize
         $search = trim($this->request->getGet('search', FILTER_SANITIZE_STRING));
@@ -24,7 +30,27 @@ class BuyerController extends BaseController
         $propertyModel = new PropertyModel();
         $properties = $propertyModel->getFilteredProperties($search, $location, $price_range);
 
-        // 4️⃣ Prepare offers for each property
+        // 4️⃣ Prepare favorites for each property
+        $favoriteModel = new FavoriteModel();
+
+        // Keep two things:
+        // - $favorites: quick boolean lookup per property for listing UI
+        // - $favoritesPreview: detailed preview list for the embedded widget
+
+        $favorites = [];
+        foreach ($properties as $property) {
+            $propertyId = (int) ($property['id'] ?? 0);
+            if ($propertyId <= 0) continue;
+            $favorites[$propertyId] = $favoriteModel->isFavorited($buyerId, $propertyId);
+        }
+
+        // Favorites preview for the embedded widget
+        $favoritesPreview = $favoriteModel->getFavoritesForBuyer($buyerId);
+        if (is_array($favoritesPreview) && count($favoritesPreview) > 4) {
+            $favoritesPreview = array_slice($favoritesPreview, 0, 4);
+        }
+
+        // 5️⃣ Prepare offers for each property
         $offerModel = new OfferModel();
         $existingOffers = [];
         foreach ($properties as $property) {
@@ -34,7 +60,7 @@ class BuyerController extends BaseController
                 ->first();
         }
 
-        // 5️⃣ Prepare chat info for each property
+        // 6️⃣ Prepare chat info for each property
         $messageModel = new MessageModel();
         $chatsExist = [];
         foreach ($properties as $property) {
@@ -47,10 +73,12 @@ class BuyerController extends BaseController
                 ->countAllResults() > 0;
         }
 
-        // 6️⃣ Pass all data to view
+        // 7️⃣ Pass all data to view
         return view('buyer/dashboard', [
             'user' => $user,
             'properties' => $properties,
+            'favorites' => $favorites,
+            'favoritesPreview' => $favoritesPreview ?? [],
             'existingOffers' => $existingOffers,
             'chatsExist' => $chatsExist,
             'search' => $search,

@@ -16,7 +16,20 @@ $routes->get('/register', 'Auth::registerForm'); // for later
 $routes->post('/register', 'Auth::register');    // for later
 
 $routes->get('/buyer/dashboard', 'BuyerController::dashboard');
+$routes->get('/buyer/favorites', 'FavoriteController::favorites');
+$routes->post('/buyer/favorites/toggle', 'FavoriteController::toggleFavorite');
 $routes->get('/seller/dashboard', 'SellerController::dashboard');
+
+// Admin
+$routes->get('/admin/dashboard', 'AdminController::dashboard');
+$routes->get('/admin/users', 'AdminController::users');
+$routes->get('/admin/properties', 'AdminController::properties');
+
+$routes->match(['get','post'], '/admin/add_property', 'AdminController::addProperty');
+$routes->match(['get','post'], '/admin/edit_property/(:num)', 'AdminController::editProperty/$1');
+
+$routes->get('/admin/offers', 'AdminController::offers');
+$routes->get('/admin/payments', 'AdminController::payments');
 $routes->post('/seller/add_property', 'SellerController::addProperty');
 $routes->post('/seller/offer_action', 'SellerController::offerAction');
 

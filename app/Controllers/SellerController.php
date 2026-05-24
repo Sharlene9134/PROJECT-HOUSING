@@ -11,11 +11,16 @@ class SellerController extends BaseController
     protected function checkRoleOrRedirect(string $role)
     {
         $session = session();
+
         $user = $session->get('user');
+
         if (!$user || $user['role'] !== $role) {
+
             redirect()->to('/login')->send();
+
             exit;
         }
+
         return $user;
     }
 
@@ -26,9 +31,13 @@ class SellerController extends BaseController
         $sellerId = $user['id'];
 
         $propertyModel = new PropertyModel();
+
         $page = (int) ($this->request->getGet('page') ?? 1);
+
         $perPage = 10;
-        $properties = $propertyModel->where('seller_id', $sellerId)
+
+        $properties = $propertyModel
+            ->where('seller_id', $sellerId)
             ->where('is_archived', 0)
             ->orderBy('id', 'DESC')
             ->paginate($perPage, 'default', $page);
@@ -36,8 +45,11 @@ class SellerController extends BaseController
         $pager = $propertyModel->pager;
 
         $offerModel = new OfferModel();
+
         $offersData = [];
+
         foreach ($properties as $property) {
+
             $offersData[$property['id']] = $offerModel
                 ->select('offers.*, users.name as buyer_name')
                 ->join('users', 'users.id = offers.buyer_id')
@@ -46,7 +58,6 @@ class SellerController extends BaseController
                 ->findAll();
         }
 
-        // Return view with data including pager
         return view('seller/dashboard', [
             'user' => $user,
             'properties' => $properties,
@@ -54,7 +65,6 @@ class SellerController extends BaseController
             'pager' => $pager
         ]);
     }
-      
 
     public function addProperty()
     {
@@ -77,20 +87,31 @@ class SellerController extends BaseController
         ];
 
         if (!$this->validate($rules)) {
-            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('errors', $this->validator->getErrors());
         }
 
-        // Handle image upload
+        // IMAGE UPLOAD
         $imagePath = null;
+
         $img = $this->request->getFile('image');
+
         if ($img && $img->isValid() && !$img->hasMoved()) {
+
             $newName = $img->getRandomName();
+
             $img->move(FCPATH . 'uploads', $newName);
+
             $imagePath = 'uploads/' . $newName;
         }
 
+        // SAVE PROPERTY
         $propertyModel = new PropertyModel();
-        $propertyModel->insert([
+
+        $propertyData = [
             'seller_id' => $user['id'],
             'title' => $data['title'],
             'description' => $data['description'],
@@ -98,41 +119,116 @@ class SellerController extends BaseController
             'location' => $data['location'],
             'image_path' => $imagePath,
             'is_archived' => 0
-        ]);
+        ];
+
+        $propertyModel->insert($propertyData);
+
+        $propertyId = $propertyModel->getInsertID();
+
+        // REALTIME DATA
+        $propertyData['id'] = $propertyId;
+        $propertyData['seller_name'] = $user['name'];
+
+        // SEND TO WEBSOCKET SERVER
+        $client = \Config\Services::curlrequest();
+
+        try {
+            log_message('debug', 'Attempting WebSocket send for property: ' . $propertyId);
+            
+            $response = $client->post('http://localhost:3000/new-property', [
+                'json' => $propertyData,
+                'timeout' => 5  // Increased timeout
+            ]);
+            
+            log_message('debug', 'WebSocket response received successfully');
+
+        } catch (\Exception $e) {
+            log_message('error', 'WebSocket Error in addProperty: ' . $e->getMessage());
+            log_message('error', 'Error in file: ' . $e->getFile() . ' line: ' . $e->getLine());
+        }
 
         session()->setFlashdata('success', 'Property added successfully!');
+
         return redirect()->to('/seller/dashboard');
     }
+
     public function offerAction()
     {
         $user = $this->checkRoleOrRedirect('seller');
 
         $offerId = $this->request->getPost('offer_id');
+
         $action = $this->request->getPost('action');
 
         if (!$offerId || !$action) {
+
             session()->setFlashdata('error', 'Invalid request.');
+
             return redirect()->to('/seller/dashboard');
         }
 
         $offerModel = new OfferModel();
 
         if ($action === 'accept') {
+
             $offerModel->update($offerId, ['status' => 'accepted']);
 
             $offer = $offerModel->find($offerId);
+
             if ($offer) {
+
                 $offerModel->where('property_id', $offer['property_id'])
-                           ->where('id !=', $offerId)
-                           ->set(['status' => 'rejected'])
-                           ->update();
+                    ->where('id !=', $offerId)
+                    ->set(['status' => 'rejected'])
+                    ->update();
+            }
+
+            // ✅ ADD WEBSOCKET NOTIFICATION FOR ACCEPTED OFFER
+            $client = \Config\Services::curlrequest();
+            try {
+                $client->post('http://localhost:3000/update-property', [
+                    'json' => [
+                        'id' => $offer['property_id'],
+                        'offer_id' => $offerId,
+                        'action' => 'offer_accepted',
+                        'status' => 'accepted'
+                    ],
+                    'timeout' => 2
+                ]);
+                log_message('debug', 'WebSocket: Offer acceptance broadcasted');
+            } catch (\Exception $e) {
+                log_message('error', 'WebSocket Error (offer accept): ' . $e->getMessage());
             }
 
             session()->setFlashdata('success', 'Offer accepted successfully!');
+
         } elseif ($action === 'reject') {
+
             $offerModel->update($offerId, ['status' => 'rejected']);
+
+            $offer = $offerModel->find($offerId);
+
+            // ✅ ADD WEBSOCKET NOTIFICATION FOR REJECTED OFFER
+            $client = \Config\Services::curlrequest();
+            try {
+                $client->post('http://localhost:3000/update-property', [
+                    'json' => [
+                        'id' => $offer['property_id'],
+                        'offer_id' => $offerId,
+                        'action' => 'offer_rejected',
+                        'status' => 'rejected'
+                    ],
+                    'timeout' => 2
+                ]);
+                log_message('debug', 'WebSocket: Offer rejection broadcasted');
+            } catch (\Exception $e) {
+                log_message('error', 'WebSocket Error (offer reject): ' . $e->getMessage());
+            }
+
             session()->setFlashdata('success', 'Offer rejected successfully!');
+
         } else {
+
             session()->setFlashdata('error', 'Invalid action.');
         }
 
@@ -146,9 +242,13 @@ class SellerController extends BaseController
         $sellerId = $user['id'];
 
         $propertyModel = new PropertyModel();
+
         $page = (int) ($this->request->getGet('page') ?? 1);
+
         $perPage = 10;
-        $properties = $propertyModel->where('seller_id', $sellerId)
+
+        $properties = $propertyModel
+            ->where('seller_id', $sellerId)
             ->where('is_archived', 1)
             ->orderBy('id', 'DESC')
             ->paginate($perPage, 'default', $page);
@@ -167,16 +267,21 @@ class SellerController extends BaseController
         $user = $this->checkRoleOrRedirect('seller');
 
         $propertyModel = new PropertyModel();
-        $property = $propertyModel->where('id', $id)
+
+        $property = $propertyModel
+            ->where('id', $id)
             ->where('seller_id', $user['id'])
             ->first();
 
         if (!$property) {
+
             session()->setFlashdata('error', 'Property not found.');
+
             return redirect()->to('/seller/dashboard');
         }
 
         if ($this->request->getMethod() === 'post') {
+
             $validation = \Config\Services::validation();
 
             $data = [
@@ -194,21 +299,50 @@ class SellerController extends BaseController
             ];
 
             if (!$this->validate($rules)) {
-                return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('errors', $this->validator->getErrors());
             }
 
             $img = $this->request->getFile('image');
+
             if ($img && $img->isValid() && !$img->hasMoved()) {
+
                 $newName = $img->getRandomName();
-            $img->move(FCPATH . 'uploads', $newName);
-            $data['image_path'] = 'uploads/' . $newName;
+
+                $img->move(FCPATH . 'uploads', $newName);
+
+                $data['image_path'] = 'uploads/' . $newName;
+
             } else {
+
                 $data['image_path'] = $property['image_path'];
             }
 
             $propertyModel->update($id, $data);
 
+            // REALTIME DATA
+            $updatedProperty = $propertyModel->find($id);
+            $updatedProperty['seller_name'] = $user['name'];
+
+            // SEND TO WEBSOCKET SERVER
+            $client = \Config\Services::curlrequest();
+
+            try {
+
+                $client->post('http://localhost:3000/update-property', [
+                    'json' => $updatedProperty
+                ]);
+
+            } catch (\Exception $e) {
+
+                log_message('error', 'WebSocket Error: ' . $e->getMessage());
+            }
+
             session()->setFlashdata('success', 'Property updated successfully!');
+
             return redirect()->to('/seller/dashboard');
         }
 
@@ -225,17 +359,41 @@ class SellerController extends BaseController
         $propertyId = $this->request->getPost('property_id');
 
         $propertyModel = new PropertyModel();
-        $property = $propertyModel->where('id', $propertyId)
+
+        $property = $propertyModel
+            ->where('id', $propertyId)
             ->where('seller_id', $user['id'])
             ->first();
 
         if (!$property) {
+
             session()->setFlashdata('error', 'Property not found.');
+
             return redirect()->to('/seller/dashboard');
         }
 
         $propertyModel->update($propertyId, ['is_archived' => 1]);
+
+        // SEND TO WEBSOCKET SERVER
+        $client = \Config\Services::curlrequest();
+
+        try {
+
+            $client->post('http://localhost:3000/archive-property', [
+                'json' => [
+                    'id' => $propertyId,
+                    'is_archived' => 1,
+                    'seller_id' => $user['id']
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+
+            log_message('error', 'WebSocket Error: ' . $e->getMessage());
+        }
+
         session()->setFlashdata('success', 'Property archived successfully!');
+
         return redirect()->to('/seller/dashboard');
     }
 
@@ -246,26 +404,49 @@ class SellerController extends BaseController
         $propertyId = $this->request->getPost('property_id');
 
         $propertyModel = new PropertyModel();
-        $property = $propertyModel->where('id', $propertyId)
+
+        $property = $propertyModel
+            ->where('id', $propertyId)
             ->where('seller_id', $user['id'])
             ->first();
 
         if (!$property) {
+
             session()->setFlashdata('error', 'Property not found.');
+
             return redirect()->to('/seller/archived');
         }
 
         $propertyModel->update($propertyId, ['is_archived' => 0]);
+
+        // SEND TO WEBSOCKET SERVER
+        $client = \Config\Services::curlrequest();
+
+        try {
+
+            $client->post('http://localhost:3000/unarchive-property', [
+                'json' => [
+                    'id' => $propertyId,
+                    'is_archived' => 0,
+                    'seller_id' => $user['id']
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+
+            log_message('error', 'WebSocket Error: ' . $e->getMessage());
+        }
+
         session()->setFlashdata('success', 'Property restored successfully!');
+
         return redirect()->to('/seller/archived');
     }
 
     public function message($buyerId, $propertyId)
     {
-        $user = $this->checkRoleOrRedirect('seller');
+        $this->checkRoleOrRedirect('seller');
 
-        // Redirect to MessageController with buyer and property info
-        return redirect()->to("/message/conversation/{$buyerId}/{$propertyId}");
+        return redirect()->to("/message/{$buyerId}/{$propertyId}");
     }
 
     public function delete()
@@ -273,30 +454,55 @@ class SellerController extends BaseController
         $user = $this->checkRoleOrRedirect('seller');
 
         $propertyId = $this->request->getPost('property_id');
+
         if (!$propertyId) {
+
             session()->setFlashdata('error', 'Invalid property id.');
+
             return redirect()->to('/seller/archived');
         }
 
         $propertyModel = new \App\Models\PropertyModel();
-        $property = $propertyModel->where('id', $propertyId)
+
+        $property = $propertyModel
+            ->where('id', $propertyId)
             ->where('seller_id', $user['id'])
             ->first();
 
         if (!$property) {
+
             session()->setFlashdata('error', 'Property not found.');
+
             return redirect()->to('/seller/archived');
         }
 
-        // Delete image file if exists
+        // DELETE IMAGE
         if (!empty($property['image_path']) && file_exists(FCPATH . $property['image_path'])) {
+
             unlink(FCPATH . $property['image_path']);
         }
 
-        // Delete property from database
+        // DELETE PROPERTY
         $propertyModel->delete($propertyId);
 
+        // ✅ ADD WEBSOCKET NOTIFICATION FOR DELETE
+        $client = \Config\Services::curlrequest();
+        try {
+            $client->post('http://localhost:3000/delete-property', [
+                'json' => [
+                    'id' => $propertyId,
+                    'seller_id' => $user['id']
+                ],
+                'timeout' => 2
+            ]);
+            log_message('debug', 'WebSocket: Property deletion broadcasted for ID: ' . $propertyId);
+        } catch (\Exception $e) {
+            log_message('error', 'WebSocket Error (delete): ' . $e->getMessage());
+        }
+
         session()->setFlashdata('success', 'Property permanently deleted.');
+
         return redirect()->to('/seller/archived');
     }
+    
 }

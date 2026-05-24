@@ -97,8 +97,23 @@ class App extends BaseConfig
 
     /**
      * --------------------------------------------------------------------------
+     * Locale / intl support
+     * --------------------------------------------------------------------------
+     *
+     * CodeIgniter 4's Time class uses PHP's intl/Locale classes when available.
+     * On some environments (like local Windows setups) the intl extension may
+     * be missing, causing fatal errors.
+     *
+     * Setting this to false disables locale negotiation which keeps the framework
+     * from triggering intl/Locale at boot time.
+     */
+    
+    /**
+     * --------------------------------------------------------------------------
      * Negotiate Locale
      * --------------------------------------------------------------------------
+
+
      *
      * If true, the current Request object will automatically determine the
      * language to use based on the value of the Accept-Language header.

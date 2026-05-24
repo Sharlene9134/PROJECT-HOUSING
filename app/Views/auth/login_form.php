@@ -1,20 +1,31 @@
+<?php
+$active = 'home';
+$user = $user ?? session()->get('user') ?? [];
+?>
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Login | House System</title>
+  <title>Login | House Marketplace</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="<?= base_url('assets/app.css') ?>" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
-<body class="bg-light">
+<body class="app-dark">
 
-  <div class="container mt-5">
-    <div class="row justify-content-center">
-      <div class="col-md-5">
-        <div class="card shadow-lg border-0 rounded-4">
-          <div class="card-body p-5 text-center">
+<?php include __DIR__ . '/../partials/header.php'; ?>
 
-            <h2 class="mb-4 text-primary fw-bold">Login</h2>
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-5">
+      <div class="app-card">
+        <div class="text-center mb-4">
+          <div class="text-primary fs-3"><i class="bi bi-box-arrow-in-right"></i></div>
+          <h2 class="mt-2 fw-bold">Login</h2>
+          <div class="text-muted small">Welcome back. Let’s find your next home.</div>
+        </div>
+
 
             <?php if (session()->getFlashdata('success')): ?>
               <div class="alert alert-success">
